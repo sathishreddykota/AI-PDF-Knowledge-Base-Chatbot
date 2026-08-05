@@ -5,7 +5,7 @@
  */
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 
 interface PendingRequest {
   resolve: (val: string) => void;
