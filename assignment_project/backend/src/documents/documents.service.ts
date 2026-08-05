@@ -25,13 +25,16 @@ export class DocumentsService {
    * Upload a PDF and trigger processing via Redis.
    */
   async upload(file: Express.Multer.File) {
-    // Save document metadata to MongoDB
+    const base64Data = file.buffer.toString('base64');
+    const isLargeFile = file.size > 10 * 1024 * 1024;
+
+    // Save document metadata to MongoDB (omit large fileData if > 10MB to prevent BSON limits)
     const document = await this.documentModel.create({
       filename: file.originalname,
       size: file.size,
       status: 'processing',
       uploadDate: new Date(),
-      fileData: file.buffer.toString('base64'),
+      fileData: isLargeFile ? '' : base64Data,
     });
 
     this.logger.log(`PDF uploaded: ${file.originalname} (${document._id})`);
@@ -43,7 +46,7 @@ export class DocumentsService {
       type: 'process',
       documentId: document._id.toString(),
       filename: file.originalname,
-      fileData: file.buffer.toString('base64'),
+      fileData: base64Data,
     });
 
     await this.redisService.publish('ai_request', request);

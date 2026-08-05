@@ -35,11 +35,7 @@ export function useDocuments(search?: string) {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await api.post('/documents/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const res = await api.post('/documents/upload', formData);
       return res.data;
     },
     onSuccess: () => {
