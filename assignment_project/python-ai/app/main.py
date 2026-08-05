@@ -70,6 +70,16 @@ app.add_middleware(
 
 # ---- Routes ----
 
+@app.get("/")
+async def root():
+    """Root endpoint for status probes."""
+    return {
+        "status": "healthy",
+        "service": "python-ai",
+        "version": "1.0.0",
+    }
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""

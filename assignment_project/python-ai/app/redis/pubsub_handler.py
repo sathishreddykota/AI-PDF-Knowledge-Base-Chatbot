@@ -136,46 +136,56 @@ def _handle_delete_request(request: AIRequest, pub_client: redis.Redis) -> None:
     pub_client.publish(response_channel, response.model_dump_json())
 
 
+import time
+
+
 def _subscriber_loop() -> None:
     """
     Main subscriber loop. Runs in a background thread.
     Listens on 'ai_request' channel and dispatches to handlers.
+    Includes auto-reconnect logic on connection drops.
     """
-    sub_client = _get_redis_client()
-    pub_client = _get_redis_client()
-    pubsub = sub_client.pubsub()
-
-    pubsub.subscribe("ai_request")
-    logger.info("Subscribed to 'ai_request' channel — waiting for messages")
-
-    for message in pubsub.listen():
-        if message["type"] != "message":
-            continue
-
+    while True:
         try:
-            data = json.loads(message["data"])
-            request = AIRequest(**data)
+            sub_client = _get_redis_client()
+            pub_client = _get_redis_client()
+            pubsub = sub_client.pubsub()
 
-            logger.info(
-                f"Received {request.type} request: {request.request_id}"
-            )
+            pubsub.subscribe("ai_request")
+            logger.info("Subscribed to 'ai_request' channel — waiting for messages")
 
-            # Dispatch to the appropriate handler
-            if request.type == "chat":
-                _handle_chat_request(request, pub_client)
-            elif request.type == "process":
-                _handle_process_request(request, pub_client)
-            elif request.type == "delete":
-                _handle_delete_request(request, pub_client)
-            elif request.type == "ping":
-                logger.info(f"Keep-alive ping acknowledged: {request.request_id}")
-            else:
-                logger.warning(f"Unknown request type: {request.type}")
+            for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in message: {e}")
+                try:
+                    data = json.loads(message["data"])
+                    request = AIRequest(**data)
+
+                    logger.info(
+                        f"Received {request.type} request: {request.request_id}"
+                    )
+
+                    # Dispatch to the appropriate handler
+                    if request.type == "chat":
+                        _handle_chat_request(request, pub_client)
+                    elif request.type == "process":
+                        _handle_process_request(request, pub_client)
+                    elif request.type == "delete":
+                        _handle_delete_request(request, pub_client)
+                    elif request.type == "ping":
+                        logger.info(f"Keep-alive ping acknowledged: {request.request_id}")
+                    else:
+                        logger.warning(f"Unknown request type: {request.type}")
+
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in message: {e}")
+                except Exception as e:
+                    logger.error(f"Error processing message: {e}", exc_info=True)
+
         except Exception as e:
-            logger.error(f"Error processing message: {e}", exc_info=True)
+            logger.error(f"Redis subscriber connection error: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
 
 
 def start_subscriber() -> None:
