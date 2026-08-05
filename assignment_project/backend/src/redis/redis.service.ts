@@ -10,7 +10,7 @@ import Redis from 'ioredis';
 interface PendingRequest {
   resolve: (val: string) => void;
   reject: (err: Error) => void;
-  timer: NodeJS.Timeout;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 @Injectable()
@@ -18,7 +18,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private publisher!: Redis;
   private subscriber!: Redis;
-  private keepAliveInterval?: NodeJS.Timeout;
+  private keepAliveInterval?: ReturnType<typeof setInterval>;
   private pendingRequests = new Map<string, PendingRequest>();
 
   constructor(private readonly configService: ConfigService) {}
@@ -70,11 +70,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
         // 2. HTTP ping Python service /health if PYTHON_AI_URL is configured
         const pythonUrl = process.env.PYTHON_AI_URL;
-        if (pythonUrl) {
-          await fetch(`${pythonUrl}/health`).catch(() => null);
+        if (pythonUrl && typeof globalThis.fetch === 'function') {
+          await globalThis.fetch(`${pythonUrl}/health`).catch(() => null);
         }
-      } catch (err: any) {
-        this.logger.debug(`Keep-alive ping: ${err.message}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.debug(`Keep-alive ping: ${msg}`);
       }
     }, 240000);
   }
