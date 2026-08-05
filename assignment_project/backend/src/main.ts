@@ -2,6 +2,12 @@
  * Application Bootstrap
  * Configures CORS, validation pipes, global filters, and starts the NestJS server.
  */
+import * as crypto from 'crypto';
+
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as any).crypto = crypto.webcrypto || crypto;
+}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 
