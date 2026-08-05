@@ -40,13 +40,14 @@ export class ChatService {
     ]);
 
     // Publish question to Redis for Python AI Service
+    // IMPORTANT: Use snake_case field names to match Python Pydantic models
     const requestId = uuidv4();
     const request = JSON.stringify({
-      requestId,
+      request_id: requestId,
       type: 'chat',
-      sessionId,
+      session_id: sessionId,
       question,
-      chatHistory,
+      chat_history: chatHistory,
     });
 
     await this.redisService.publish('ai_request', request);

@@ -40,13 +40,14 @@ export class DocumentsService {
     this.logger.log(`PDF uploaded: ${file.originalname} (${document._id})`);
 
     // Publish processing request to Python AI Service via Redis
+    // IMPORTANT: Use snake_case field names to match Python Pydantic models
     const requestId = uuidv4();
     const request = JSON.stringify({
-      requestId,
+      request_id: requestId,
       type: 'process',
-      documentId: document._id.toString(),
+      document_id: document._id.toString(),
       filename: file.originalname,
-      fileData: base64Data,
+      file_data: base64Data,
     });
 
     await this.redisService.publish('ai_request', request);
@@ -112,12 +113,12 @@ export class DocumentsService {
       throw new NotFoundException('Document not found');
     }
 
-    // Request vector deletion from Python AI Service
+    // Request vector deletion from Python AI Service (snake_case fields)
     const requestId = uuidv4();
     const request = JSON.stringify({
-      requestId,
+      request_id: requestId,
       type: 'delete',
-      documentId: id,
+      document_id: id,
     });
 
     await this.redisService.publish('ai_request', request);
@@ -148,11 +149,11 @@ export class DocumentsService {
     // Update status to processing
     await this.documentModel.findByIdAndUpdate(id, { status: 'processing' });
 
-    // First delete existing vectors
+    // First delete existing vectors (snake_case fields)
     const deleteRequestId = uuidv4();
     await this.redisService.publish(
       'ai_request',
-      JSON.stringify({ requestId: deleteRequestId, type: 'delete', documentId: id }),
+      JSON.stringify({ request_id: deleteRequestId, type: 'delete', document_id: id }),
     );
 
     try {
@@ -161,14 +162,14 @@ export class DocumentsService {
       this.logger.warn('Old vector deletion may have failed during reprocess');
     }
 
-    // Then reprocess
+    // Then reprocess (snake_case fields)
     const requestId = uuidv4();
     const request = JSON.stringify({
-      requestId,
+      request_id: requestId,
       type: 'process',
-      documentId: id,
+      document_id: id,
       filename: document.filename,
-      fileData: document.fileData,
+      file_data: document.fileData,
     });
 
     await this.redisService.publish('ai_request', request);

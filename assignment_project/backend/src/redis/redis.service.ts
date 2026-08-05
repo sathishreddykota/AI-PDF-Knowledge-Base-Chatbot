@@ -26,8 +26,24 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const redisUrl = this.configService.get<string>('redis.url') || 'redis://localhost:6379';
 
-    this.publisher = new Redis(redisUrl, { maxRetriesPerRequest: 3 });
-    this.subscriber = new Redis(redisUrl, { maxRetriesPerRequest: 3 });
+    // Shared connection options for resilient Upstash TLS reconnections
+    const sharedOpts = {
+      enableReadyCheck: false,
+      retryStrategy: (times: number) => Math.min(times * 500, 5000),
+      tls: redisUrl.startsWith('rediss://') ? {} : undefined,
+    };
+
+    // Publisher: normal retry behaviour
+    this.publisher = new Redis(redisUrl, {
+      ...sharedOpts,
+      maxRetriesPerRequest: 3,
+    });
+
+    // Subscriber: maxRetriesPerRequest MUST be null for psubscribe mode
+    this.subscriber = new Redis(redisUrl, {
+      ...sharedOpts,
+      maxRetriesPerRequest: null,
+    });
 
     this.publisher.on('connect', () => this.logger.log('Redis publisher connected'));
     this.subscriber.on('connect', () => {
@@ -62,10 +78,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private startKeepAlivePing() {
     this.keepAliveInterval = setInterval(async () => {
       try {
-        // 1. Publish Redis keep-alive ping
+        // 1. Publish Redis keep-alive ping (snake_case to match Python Pydantic)
         await this.publisher.publish(
           'ai_request',
-          JSON.stringify({ requestId: 'keep-alive-ping', type: 'ping' }),
+          JSON.stringify({ request_id: 'keep-alive-ping', type: 'ping' }),
         );
 
         // 2. HTTP ping Python service /health if PYTHON_AI_URL is configured
@@ -103,29 +119,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async publish(channel: string, message: string): Promise<void> {
     await this.publisher.publish(channel, message);
     this.logger.debug(`Published to ${channel}`);
-  }
-
-  /**
-   * Subscribe to a specific channel.
-   */
-  async subscribe(
-    channel: string,
-    handler: (message: string) => void,
-  ): Promise<() => void> {
-    await this.subscriber.subscribe(channel);
-
-    const messageHandler = (ch: string, msg: string) => {
-      if (ch === channel) {
-        handler(msg);
-      }
-    };
-
-    this.subscriber.on('message', messageHandler);
-
-    return () => {
-      this.subscriber.unsubscribe(channel);
-      this.subscriber.removeListener('message', messageHandler);
-    };
   }
 
   /**
