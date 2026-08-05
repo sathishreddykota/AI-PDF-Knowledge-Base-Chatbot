@@ -256,15 +256,24 @@ npm run dev
    - `ADMIN_EMAIL` = `admin@admin.com`
    - `ADMIN_PASSWORD` = `Admin@123`
 
-### 3. Python AI Service -> Hugging Face Spaces (Docker Space)
-1. Create a new **Space** on [Hugging Face Spaces](https://huggingface.co/new-space).
-2. Choose **Docker** as the Space SDK (Blank / Docker).
-3. Upload all files from the `python-ai/` directory (including `Dockerfile` and `README.md` with YAML header).
-4. Navigate to Space **Settings -> Secret variables** and add:
+### 3. Python AI Service -> Render (Web Service)
+
+#### Option A: Automatic via Render Blueprint (`render.yaml`)
+1. In your [Render Dashboard](https://dashboard.render.com/), click **New +** -> **Blueprint**.
+2. Connect your GitHub repository. Render will automatically read `render.yaml` and provision both the `pdf-kb-backend` and `pdf-kb-python-ai` Web Services.
+3. Fill in the required environment variables (`GEMINI_API_KEY`, `REDIS_URL`, `MONGODB_URI`, `ADMIN_PASSWORD`).
+
+#### Option B: Manual Setup on Render Dashboard
+1. Create a **Web Service** on Render pointing to `python-ai/`.
+2. Environment: `Python 3` (or `Docker`).
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Health Check Path: `/health`
+6. Environment Variables:
    - `GEMINI_API_KEY` = `your_google_gemini_api_key`
    - `REDIS_URL` = `rediss://default:<password>@<host>.upstash.io:6379` (Upstash Redis)
    - `CHROMA_PATH` = `./chroma_data`
-5. Hugging Face Spaces automatically builds and runs the container on port `7860`, keeping the AI service active without spin-down sleeping issues!
+7. Render automatically provisions the service, binds to dynamic `$PORT`, and keeps the Redis Pub/Sub listener daemon running continuously.
 
 ---
 
