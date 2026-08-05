@@ -1,6 +1,6 @@
 /**
  * Application Bootstrap
- * Configures CORS, validation pipes, global filters, and starts the NestJS server.
+ * Configures CORS, validation pipes, global filters, body limits, and starts NestJS.
  */
 import * as crypto from 'crypto';
 
@@ -10,6 +10,7 @@ if (typeof globalThis.crypto === 'undefined') {
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -19,16 +20,20 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
-  // CORS — allow frontend origins
+  // Enable CORS for Vercel, localhost, and custom frontend domains
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'https://*.vercel.app',
-      process.env.FRONTEND_URL,
-    ].filter(Boolean),
+    origin: (origin, callback) => {
+      // Allow all requests (Vercel subdomains, localhost, etc.)
+      callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   });
+
+  // Increase payload size limit for PDF file uploads (50MB)
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ limit: '50mb', extended: true }));
 
   // Global validation pipe
   app.useGlobalPipes(
