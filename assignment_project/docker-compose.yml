@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # ---- MongoDB Database ----
+  mongodb:
+    image: mongo:latest
+    container_name: pdf_chatbot_mongo
+    restart: always
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+
+  # ---- Redis Pub/Sub Broker ----
+  redis:
+    image: redis:alpine
+    container_name: pdf_chatbot_redis
+    restart: always
+    ports:
+      - '6379:6379'
+
+  # ---- Node.js NestJS Backend ----
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pdf_chatbot_backend
+    restart: always
+    ports:
+      - '4000:4000'
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://mongodb:27017/pdf-chatbot
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=supersecretjwtkey123
+      - JWT_REFRESH_SECRET=supersecretrefreshkey123
+      - ADMIN_EMAIL=admin@admin.com
+      - ADMIN_PASSWORD=Admin@123
+    depends_on:
+      - mongodb
+      - redis
+
+  # ---- Python AI Service (FastAPI + LangChain + ChromaDB) ----
+  python-ai:
+    build:
+      context: ./python-ai
+      dockerfile: Dockerfile
+    container_name: pdf_chatbot_ai
+    restart: always
+    ports:
+      - '7860:7860'
+    environment:
+      - PORT=7860
+      - REDIS_URL=redis://redis:6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CHROMA_PATH=/home/user/app/chroma_data
+    volumes:
+      - chroma_data:/app/chroma_data
+    depends_on:
+      - redis
+
+  # ---- Next.js Frontend ----
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pdf_chatbot_frontend
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+  chroma_data:
