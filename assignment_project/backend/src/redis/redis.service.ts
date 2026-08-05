@@ -12,6 +12,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private publisher!: Redis;
   private subscriber!: Redis;
+  private keepAliveInterval?: NodeJS.Timeout;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -25,9 +26,35 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.subscriber.on('connect', () => this.logger.log('Redis subscriber connected'));
     this.publisher.on('error', (err) => this.logger.error('Redis publisher error', err.message));
     this.subscriber.on('error', (err) => this.logger.error('Redis subscriber error', err.message));
+
+    // Start keep-alive ping loop every 4 minutes to prevent Render idle spin-down
+    this.startKeepAlivePing();
+  }
+
+  private startKeepAlivePing() {
+    this.keepAliveInterval = setInterval(async () => {
+      try {
+        // 1. Publish Redis keep-alive ping
+        await this.publisher.publish(
+          'ai_request',
+          JSON.stringify({ requestId: 'keep-alive-ping', type: 'ping' }),
+        );
+
+        // 2. HTTP ping Python service /health if PYTHON_AI_URL is configured
+        const pythonUrl = process.env.PYTHON_AI_URL;
+        if (pythonUrl) {
+          await fetch(`${pythonUrl}/health`).catch(() => null);
+        }
+      } catch (err: any) {
+        this.logger.debug(`Keep-alive ping: ${err.message}`);
+      }
+    }, 240000);
   }
 
   async onModuleDestroy() {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+    }
     await this.publisher?.quit();
     await this.subscriber?.quit();
     this.logger.log('Redis connections closed');

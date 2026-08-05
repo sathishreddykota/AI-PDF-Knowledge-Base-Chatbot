@@ -167,6 +167,8 @@ def _subscriber_loop() -> None:
                 _handle_process_request(request, pub_client)
             elif request.type == "delete":
                 _handle_delete_request(request, pub_client)
+            elif request.type == "ping":
+                logger.info(f"Keep-alive ping acknowledged: {request.request_id}")
             else:
                 logger.warning(f"Unknown request type: {request.type}")
 

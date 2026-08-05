@@ -24,6 +24,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+import asyncio
+
+# ---- Background Keep-Alive Task ----
+
+async def _keep_alive_task():
+    """Background task to prevent idle timeout and keep the service warm."""
+    while True:
+        await asyncio.sleep(240)  # Every 4 minutes
+        logger.info("Heartbeat ping: Python AI Service is warm and subscriber is active")
+
+
 # ---- Application Lifespan ----
 
 @asynccontextmanager
@@ -31,8 +42,10 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     logger.info("Starting Python AI Service...")
     start_subscriber()
-    logger.info("AI Service ready — Redis subscriber active")
+    keep_alive_handle = asyncio.create_task(_keep_alive_task())
+    logger.info("AI Service ready — Redis subscriber and keep-alive daemon active")
     yield
+    keep_alive_handle.cancel()
     logger.info("Shutting down Python AI Service...")
 
 
