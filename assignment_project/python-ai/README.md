@@ -13,6 +13,7 @@ FastAPI microservice responsible for PDF text extraction (`pdfplumber` + `PyPDF`
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
    - **Health Check Path**: `/health`
 5. In **Environment Variables**, add:
+   - `PYTHON_VERSION`: `3.11.9` (Important: pins stable Python release with pre-built binary wheels)
    - `GEMINI_API_KEY`: Your Google Gemini API Key
    - `REDIS_URL`: Your Upstash Redis URL (`rediss://default:<password>@<host>.upstash.io:6379`)
    - `CHROMA_PATH`: `./chroma_data`

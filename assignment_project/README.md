@@ -270,6 +270,7 @@ npm run dev
 4. Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 5. Health Check Path: `/health`
 6. Environment Variables:
+   - `PYTHON_VERSION` = `3.11.9`
    - `GEMINI_API_KEY` = `your_google_gemini_api_key`
    - `REDIS_URL` = `rediss://default:<password>@<host>.upstash.io:6379` (Upstash Redis)
    - `CHROMA_PATH` = `./chroma_data`
