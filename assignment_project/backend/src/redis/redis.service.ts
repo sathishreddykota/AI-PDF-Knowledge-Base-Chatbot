@@ -3,7 +3,12 @@
  * Wraps ioredis for Pub/Sub operations.
  * Uses multiplexed permanent connections for ultra-fast, zero-overhead messaging.
  */
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
 
@@ -23,8 +28,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async onModuleInit() {
-    const redisUrl = this.configService.get<string>('redis.url') || 'redis://localhost:6379';
+  onModuleInit() {
+    const redisUrl =
+      this.configService.get<string>('redis.url') || 'redis://localhost:6379';
 
     // Shared connection options for resilient Upstash TLS reconnections
     const sharedOpts = {
@@ -45,11 +51,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       maxRetriesPerRequest: null,
     });
 
-    this.publisher.on('connect', () => this.logger.log('Redis publisher connected'));
+    this.publisher.on('connect', () =>
+      this.logger.log('Redis publisher connected'),
+    );
     this.subscriber.on('connect', () => {
       this.logger.log('Redis subscriber connected');
       // Subscribe to ai_response:* pattern once for all request-response cycles
-      this.subscriber.psubscribe('ai_response:*', (err) => {
+      void this.subscriber.psubscribe('ai_response:*', (err) => {
         if (err) {
           this.logger.error(`Failed to psubscribe: ${err.message}`);
         } else {
@@ -58,42 +66,53 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       });
     });
 
-    this.publisher.on('error', (err) => this.logger.error('Redis publisher error', err.message));
-    this.subscriber.on('error', (err) => this.logger.error('Redis subscriber error', err.message));
+    this.publisher.on('error', (err) =>
+      this.logger.error('Redis publisher error', err.message),
+    );
+    this.subscriber.on('error', (err) =>
+      this.logger.error('Redis subscriber error', err.message),
+    );
 
     // Handle incoming pmessage for ai_response:*
-    this.subscriber.on('pmessage', (_pattern: string, channel: string, message: string) => {
-      const pending = this.pendingRequests.get(channel);
-      if (pending) {
-        clearTimeout(pending.timer);
-        this.pendingRequests.delete(channel);
-        pending.resolve(message);
-      }
-    });
+    this.subscriber.on(
+      'pmessage',
+      (_pattern: string, channel: string, message: string) => {
+        const pending = this.pendingRequests.get(channel);
+        if (pending) {
+          clearTimeout(pending.timer);
+          this.pendingRequests.delete(channel);
+          pending.resolve(message);
+        }
+      },
+    );
 
     // Start keep-alive ping loop every 4 minutes to prevent Render idle spin-down
     this.startKeepAlivePing();
   }
 
   private startKeepAlivePing() {
-    this.keepAliveInterval = setInterval(async () => {
-      try {
-        // 1. Publish Redis keep-alive ping (snake_case to match Python Pydantic)
-        await this.publisher.publish(
-          'ai_request',
-          JSON.stringify({ request_id: 'keep-alive-ping', type: 'ping' }),
-        );
-
-        // 2. HTTP ping Python service /health if PYTHON_AI_URL is configured
-        const pythonUrl = process.env.PYTHON_AI_URL;
-        if (pythonUrl && typeof globalThis.fetch === 'function') {
-          await globalThis.fetch(`${pythonUrl}/health`).catch(() => null);
-        }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.logger.debug(`Keep-alive ping: ${msg}`);
-      }
+    this.keepAliveInterval = setInterval(() => {
+      void this.sendKeepAlivePing();
     }, 240000);
+  }
+
+  private async sendKeepAlivePing(): Promise<void> {
+    try {
+      // 1. Publish Redis keep-alive ping (snake_case to match Python Pydantic)
+      await this.publisher.publish(
+        'ai_request',
+        JSON.stringify({ request_id: 'keep-alive-ping', type: 'ping' }),
+      );
+
+      // 2. HTTP ping Python service /health if PYTHON_AI_URL is configured
+      const pythonUrl = process.env.PYTHON_AI_URL;
+      if (pythonUrl && typeof globalThis.fetch === 'function') {
+        await globalThis.fetch(`${pythonUrl}/health`).catch(() => null);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.debug(`Keep-alive ping: ${msg}`);
+    }
   }
 
   async onModuleDestroy() {
@@ -104,7 +123,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     // Clean up any pending timeouts
     for (const [channel, pending] of this.pendingRequests.entries()) {
       clearTimeout(pending.timer);
-      pending.reject(new Error(`Service shutting down, request on ${channel} cancelled`));
+      pending.reject(
+        new Error(`Service shutting down, request on ${channel} cancelled`),
+      );
     }
     this.pendingRequests.clear();
 

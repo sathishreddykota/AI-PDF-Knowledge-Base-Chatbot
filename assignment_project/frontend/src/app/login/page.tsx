@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AxiosError } from 'axios';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -12,6 +13,12 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+
+interface ApiErrorResponse {
+  error?: {
+    message?: string;
+  };
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,8 +46,9 @@ export default function LoginPage() {
         setAuth(user, accessToken, refreshToken);
         router.push('/admin/dashboard');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Invalid email or password');
+    } catch (err: unknown) {
+      const error = err as AxiosError<ApiErrorResponse>;
+      setError(error.response?.data?.error?.message || 'Invalid email or password');
     }
   };
 

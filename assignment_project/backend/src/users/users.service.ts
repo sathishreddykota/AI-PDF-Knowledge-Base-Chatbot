@@ -23,8 +23,10 @@ export class UsersService implements OnModuleInit {
    * Seed the default admin account on first startup.
    */
   async onModuleInit(): Promise<void> {
-    const adminEmail = this.configService.get<string>('admin.email') || 'admin@admin.com';
-    const adminPassword = this.configService.get<string>('admin.password') || 'Admin@123';
+    const adminEmail =
+      this.configService.get<string>('admin.email') || 'admin@admin.com';
+    const adminPassword =
+      this.configService.get<string>('admin.password') || 'Admin@123';
 
     const existingAdmin = await this.userModel.findOne({ email: adminEmail });
 

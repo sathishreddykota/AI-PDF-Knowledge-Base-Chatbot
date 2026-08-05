@@ -35,7 +35,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout() {
+  logout() {
     // JWT is stateless — logout is handled client-side by removing tokens
     return {
       success: true,

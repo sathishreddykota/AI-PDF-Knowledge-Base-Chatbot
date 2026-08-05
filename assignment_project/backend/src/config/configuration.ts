@@ -9,7 +9,8 @@ export default () => ({
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'default-jwt-secret-change-me',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'default-refresh-secret-change-me',
+    refreshSecret:
+      process.env.JWT_REFRESH_SECRET || 'default-refresh-secret-change-me',
     expiresIn: '1h',
     refreshExpiresIn: '7d',
   },

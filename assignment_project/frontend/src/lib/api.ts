@@ -44,11 +44,13 @@ api.interceptors.response.use(
           // Token refresh failed -> clear tokens
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
-          window.location.href = '/login';
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign('/login');
         }
       } else {
         localStorage.removeItem('accessToken');
-        window.location.href = '/login';
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign('/login');
       }
     }
     return Promise.reject(error);

@@ -28,7 +28,7 @@ export default function DocumentTable({ documents, isLoading }: DocumentTablePro
       try {
         await deleteDocument(id);
         toast.success(`Deleted document "${filename}"`);
-      } catch (err: any) {
+      } catch {
         toast.error('Failed to delete document');
       }
     }
@@ -39,7 +39,7 @@ export default function DocumentTable({ documents, isLoading }: DocumentTablePro
       toast.info(`Started reprocessing "${filename}"...`);
       await reprocessDocument(id);
       toast.success(`Reprocessed "${filename}" successfully!`);
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to reprocess document');
     }
   };

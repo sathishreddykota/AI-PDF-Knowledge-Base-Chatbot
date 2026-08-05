@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Bot, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react';
+import { Bot, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChatStore } from '@/store/chat-store';
 import { useChat } from '@/hooks/useChat';

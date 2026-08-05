@@ -10,6 +10,11 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 
+interface RefreshTokenPayload {
+  sub: string;
+  email: string;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -65,9 +70,12 @@ export class AuthService {
    */
   async refresh(refreshToken: string) {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('jwt.refreshSecret')!,
-      });
+      const payload = this.jwtService.verify<RefreshTokenPayload>(
+        refreshToken,
+        {
+          secret: this.configService.get<string>('jwt.refreshSecret')!,
+        },
+      );
 
       const user = await this.usersService.findById(payload.sub);
       if (!user) {

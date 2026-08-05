@@ -5,7 +5,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type DocumentStatus = 'uploading' | 'processing' | 'completed' | 'failed';
+export type DocumentStatus =
+  'uploading' | 'processing' | 'completed' | 'failed';
 
 @Schema({ timestamps: true })
 export class PdfDocument extends Document {
@@ -15,7 +16,11 @@ export class PdfDocument extends Document {
   @Prop({ default: 0 })
   size: number;
 
-  @Prop({ type: String, enum: ['uploading', 'processing', 'completed', 'failed'], default: 'uploading' })
+  @Prop({
+    type: String,
+    enum: ['uploading', 'processing', 'completed', 'failed'],
+    default: 'uploading',
+  })
   status: DocumentStatus;
 
   @Prop({ default: Date.now })

@@ -2,10 +2,13 @@
  * Application Bootstrap
  * Configures CORS, validation pipes, global filters, body limits, and starts NestJS.
  */
-import * as crypto from 'crypto';
+import { webcrypto } from 'crypto';
 
 if (typeof globalThis.crypto === 'undefined') {
-  (globalThis as any).crypto = crypto.webcrypto || crypto;
+  Object.defineProperty(globalThis, 'crypto', {
+    value: webcrypto,
+    configurable: true,
+  });
 }
 
 import { NestFactory } from '@nestjs/core';
@@ -22,13 +25,15 @@ async function bootstrap() {
 
   // Enable CORS for Vercel, localhost, and custom frontend domains
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow all requests (Vercel subdomains, localhost, etc.)
-      callback(null, true);
-    },
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+    ],
   });
 
   // Increase payload size limit for PDF file uploads (50MB)
@@ -53,4 +58,4 @@ async function bootstrap() {
   Logger.log(`Backend server running on http://localhost:${port}`, 'Bootstrap');
 }
 
-bootstrap();
+void bootstrap();

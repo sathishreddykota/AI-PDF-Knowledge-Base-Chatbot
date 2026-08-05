@@ -12,7 +12,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     initialize();
-    setIsChecking(false);
+    const timer = window.setTimeout(() => setIsChecking(false), 0);
+    return () => window.clearTimeout(timer);
   }, [initialize]);
 
   useEffect(() => {

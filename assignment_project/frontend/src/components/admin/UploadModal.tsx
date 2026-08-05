@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import { AxiosError } from 'axios';
 import { UploadCloud, FileText, AlertCircle, Loader2, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,12 @@ import { toast } from 'sonner';
 interface UploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface ApiErrorResponse {
+  error?: {
+    message?: string;
+  };
 }
 
 export default function UploadModal({ open, onOpenChange }: UploadModalProps) {
@@ -60,8 +67,9 @@ export default function UploadModal({ open, onOpenChange }: UploadModalProps) {
       toast.success(`PDF "${file.name}" uploaded successfully! Processing started.`);
       setFile(null);
       onOpenChange(false);
-    } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Failed to upload PDF';
+    } catch (err: unknown) {
+      const error = err as AxiosError<ApiErrorResponse>;
+      const msg = error.response?.data?.error?.message || 'Failed to upload PDF';
       setError(msg);
       toast.error(msg);
     }
@@ -73,7 +81,7 @@ export default function UploadModal({ open, onOpenChange }: UploadModalProps) {
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">Upload Knowledge Base PDF</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Upload a PDF document to expand the AI's knowledge base. Max size 10MB.
+            Upload a PDF document to expand the AI&apos;s knowledge base. Max size 10MB.
           </DialogDescription>
         </DialogHeader>
 

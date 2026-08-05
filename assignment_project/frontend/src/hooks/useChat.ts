@@ -1,8 +1,29 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { api } from '@/lib/api';
 import { useChatStore, ChatMessage } from '@/store/chat-store';
+
+interface SourceDocumentResponse {
+  filename: string;
+  pageNumber?: number;
+}
+
+interface ChatHistoryItemResponse {
+  _id: string;
+  question: string;
+  answer: string;
+  sources?: SourceDocumentResponse[];
+  suggestedQuestions?: string[];
+  timestamp: string;
+}
+
+interface ApiErrorResponse {
+  error?: {
+    message?: string;
+  };
+}
 
 export function useChat() {
   const { sessionId, setMessages, addMessage, setSuggestedQuestions, setIsLoading } = useChatStore();
@@ -16,7 +37,7 @@ export function useChat() {
       const res = await api.get(`/chat/history/${sessionId}`);
       if (res.data?.success && Array.isArray(res.data?.data)) {
         const formatted: ChatMessage[] = [];
-        res.data.data.forEach((item: any) => {
+        (res.data.data as ChatHistoryItemResponse[]).forEach((item) => {
           formatted.push({
             id: `${item._id}_user`,
             sender: 'user',
@@ -85,7 +106,8 @@ export function useChat() {
         queryClient.invalidateQueries({ queryKey: ['chatHistory', sessionId] });
       }
     },
-    onError: (error: any) => {
+    onError: (err: unknown) => {
+      const error = err as AxiosError<ApiErrorResponse>;
       setIsLoading(false);
       const errorMsg: ChatMessage = {
         id: `err_${Date.now()}`,

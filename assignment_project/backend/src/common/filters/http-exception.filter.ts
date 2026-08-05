@@ -12,6 +12,10 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 
+interface ExceptionResponseBody {
+  message?: string | string[];
+}
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -21,7 +25,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
+    let message: string | string[] = 'Internal server error';
     let code = 'INTERNAL_ERROR';
 
     if (exception instanceof HttpException) {
@@ -30,8 +34,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
-      } else if (typeof exceptionResponse === 'object') {
-        message = (exceptionResponse as any).message || message;
+      } else if (exceptionResponse && typeof exceptionResponse === 'object') {
+        const body = exceptionResponse as ExceptionResponseBody;
+        message = body.message ?? message;
       }
 
       code = this.getErrorCode(status);
@@ -44,9 +49,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       success: false,
       error: {
         code,
-        message: Array.isArray(message) ? message[0] : message,
+        message: this.normalizeMessage(message),
       },
     });
+  }
+
+  private normalizeMessage(message: string | string[]): string {
+    return Array.isArray(message) ? message[0] : message;
   }
 
   private getErrorCode(status: number): string {

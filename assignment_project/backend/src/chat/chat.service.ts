@@ -12,6 +12,21 @@ const uuidv4 = randomUUID;
 import { Chat } from './schemas/chat.schema';
 import { RedisService } from '../redis/redis.service';
 
+interface AiSource {
+  filename: string;
+  page_number?: number;
+  pageNumber?: number;
+}
+
+interface AiChatResponse {
+  success: boolean;
+  answer?: string;
+  sources?: AiSource[];
+  suggested_questions?: string[];
+  suggestedQuestions?: string[];
+  error?: string;
+}
+
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
@@ -25,7 +40,9 @@ export class ChatService {
    * Ask a question — publishes to Redis, waits for AI response, saves to DB.
    */
   async ask(sessionId: string, question: string) {
-    this.logger.log(`New question in session ${sessionId}: ${question.substring(0, 50)}...`);
+    this.logger.log(
+      `New question in session ${sessionId}: ${question.substring(0, 50)}...`,
+    );
 
     // Fetch recent chat history for context
     const history = await this.chatModel
@@ -59,19 +76,25 @@ export class ChatService {
         60000, // 60 second timeout
       );
 
-      const response = JSON.parse(responseStr);
+      const response = JSON.parse(responseStr) as AiChatResponse;
 
       if (!response.success) {
         throw new Error(response.error || 'AI processing failed');
       }
 
+      const sources = (response.sources || []).map((source) => ({
+        filename: source.filename,
+        pageNumber: source.pageNumber ?? source.page_number,
+      }));
+
       // Save chat to database
       const chat = await this.chatModel.create({
         sessionId,
         question,
-        answer: response.answer,
-        sources: response.sources || [],
-        suggestedQuestions: response.suggested_questions || response.suggestedQuestions || [],
+        answer: response.answer || '',
+        sources,
+        suggestedQuestions:
+          response.suggested_questions || response.suggestedQuestions || [],
         timestamp: new Date(),
       });
 
@@ -84,11 +107,13 @@ export class ChatService {
         suggestedQuestions: chat.suggestedQuestions,
         timestamp: chat.timestamp,
       };
-    } catch (error) {
-      this.logger.error(`Chat processing failed: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Chat processing failed: ${message}`);
 
       // Save failed attempt for history
-      const fallbackAnswer = 'Sorry, I was unable to process your question. Please try again.';
+      const fallbackAnswer =
+        'Sorry, I was unable to process your question. Please try again.';
       const chat = await this.chatModel.create({
         sessionId,
         question,
@@ -114,10 +139,7 @@ export class ChatService {
    * Get chat history for a session.
    */
   async getHistory(sessionId: string) {
-    return this.chatModel
-      .find({ sessionId })
-      .sort({ timestamp: 1 })
-      .exec();
+    return this.chatModel.find({ sessionId }).sort({ timestamp: 1 }).exec();
   }
 
   /**

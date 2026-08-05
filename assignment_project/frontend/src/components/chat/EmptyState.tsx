@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, FileText, Sparkles, HelpCircle } from 'lucide-react';
+import { Bot, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface EmptyStateProps {

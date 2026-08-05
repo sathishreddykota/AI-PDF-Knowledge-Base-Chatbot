@@ -3,7 +3,14 @@
  * POST /chat/ask — Ask a question (public, no auth)
  * GET /chat/history/:sessionId — Get chat history (public)
  */
-import { Controller, Post, Get, Body, Param, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  BadRequestException,
+} from '@nestjs/common';
 
 import { ChatService } from './chat.service';
 
