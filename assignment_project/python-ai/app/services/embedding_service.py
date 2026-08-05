@@ -1,8 +1,10 @@
 """
 Embedding Service + ChromaDB Vector Store
 Manages embedding generation (Gemini) and ChromaDB storage/retrieval.
+Optimized with parallel batch processing for fast ingestion.
 """
 
+import concurrent.futures
 import logging
 
 import chromadb
@@ -51,7 +53,7 @@ def _get_collection() -> chromadb.Collection:
 
 def add_chunks_to_store(chunks: list[dict]) -> int:
     """
-    Generate embeddings and store chunks in ChromaDB.
+    Generate embeddings and store chunks in ChromaDB with parallel batch processing.
 
     Args:
         chunks: List of { "text": str, "metadata": { document_id, filename, page_number, chunk_index } }
@@ -72,33 +74,38 @@ def add_chunks_to_store(chunks: list[dict]) -> int:
         for i, c in enumerate(chunks)
     ]
 
-    # Generate embeddings in batches to avoid API limits
     batch_size = 50
-    for start in range(0, len(texts), batch_size):
-        end = min(start + batch_size, len(texts))
-        batch_texts = texts[start:end]
-        batch_ids = ids[start:end]
-        batch_metadatas = metadatas[start:end]
+    batches = [
+        (texts[i:i + batch_size], ids[i:i + batch_size], metadatas[i:i + batch_size])
+        for i in range(0, len(texts), batch_size)
+    ]
 
-        embeddings = embedding_model.embed_documents(batch_texts)
+    def process_batch(batch):
+        b_texts, b_ids, b_metadatas = batch
+        embeddings = embedding_model.embed_documents(b_texts)
+        clean_metadatas = [{k: str(v) for k, v in m.items()} for m in b_metadatas]
+        return b_ids, embeddings, b_texts, clean_metadatas
 
-        # Convert metadata values to strings for ChromaDB compatibility
-        clean_metadatas = []
-        for m in batch_metadatas:
-            clean_metadatas.append({
-                k: str(v) for k, v in m.items()
-            })
+    all_ids, all_embeddings, all_texts, all_clean_metadatas = [], [], [], []
 
-        collection.add(
-            ids=batch_ids,
-            embeddings=embeddings,
-            documents=batch_texts,
-            metadatas=clean_metadatas,
-        )
+    # Parallelize embedding API requests across batches using ThreadPoolExecutor
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(batches))) as executor:
+        results = list(executor.map(process_batch, batches))
+        for b_ids, embeddings, b_texts, clean_metadatas in results:
+            all_ids.extend(b_ids)
+            all_embeddings.extend(embeddings)
+            all_texts.extend(b_texts)
+            all_clean_metadatas.extend(clean_metadatas)
 
-        logger.info(f"Stored batch {start}-{end} of {len(texts)} chunks")
+    # Insert into ChromaDB in one batch
+    collection.add(
+        ids=all_ids,
+        embeddings=all_embeddings,
+        documents=all_texts,
+        metadatas=all_clean_metadatas,
+    )
 
-    logger.info(f"Total {len(chunks)} chunks stored in ChromaDB")
+    logger.info(f"Total {len(chunks)} chunks stored in ChromaDB in parallel")
     return len(chunks)
 
 
@@ -136,7 +143,6 @@ def delete_document_vectors(document_id: str) -> None:
     """Remove all vectors for a specific document from ChromaDB."""
     collection = _get_collection()
 
-    # Get all IDs matching this document
     results = collection.get(
         where={"document_id": document_id},
         include=[],
