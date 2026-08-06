@@ -35,7 +35,7 @@ def _get_embedding_model() -> GoogleGenerativeAIEmbeddings:
     global _embedding_model
     if _embedding_model is None:
         _embedding_model = GoogleGenerativeAIEmbeddings(
-            model="models/embedding-001",
+            model="models/gemini-embedding-001",
             google_api_key=settings.gemini_api_key,
         )
         logger.info("Gemini embedding model initialized")
